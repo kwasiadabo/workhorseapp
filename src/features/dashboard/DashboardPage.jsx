@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { endOfDay, startOfDay } from 'date-fns';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   ArrowRight,
   Banknote,
@@ -7,11 +8,7 @@ import {
   CalendarCheck,
   CalendarClock,
   CheckCircle2,
-  Clock,
-  CircleDot,
-  HandCoins,
   ListChecks,
-  Plus,
   Scissors,
   TrendingUp,
   UserPlus,
@@ -21,11 +18,10 @@ import {
 } from 'lucide-react';
 
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import StatCard from '@/components/shared/StatCard';
-import { formatDate, formatDateTime } from '@/lib/dateFormat';
+import { formatDate } from '@/lib/dateFormat';
 import useAuthStore from '@/store/authStore';
 import { useBookingsList } from '@/features/bookings/useBookings';
 import { useDashboardSummary } from './useDashboard';
@@ -91,7 +87,6 @@ export default function DashboardPage() {
   const hasRole = useAuthStore((s) => s.hasRole);
 
   const canViewBookings = hasPermission('bookings.view') || hasPermission('bookings.view_own');
-  const canCreateBooking = hasPermission('bookings.create');
   const canManageBookings = hasPermission('bookings.manage');
 
   const { data: summary, isLoading: summaryLoading } = useDashboardSummary({ enabled: canManageBookings });
@@ -103,8 +98,6 @@ export default function DashboardPage() {
     { limit: 1, scheduledFrom: todayStart, scheduledTo: todayEnd },
     { enabled: canViewBookings }
   );
-  const inProgress = useBookingsList({ limit: 1, status: 'in_progress' }, { enabled: canViewBookings });
-  const awaitingPayment = useBookingsList({ limit: 1, status: 'awaiting_payment' }, { enabled: canViewBookings });
   const completedToday = useBookingsList(
     { limit: 1, status: 'completed', scheduledFrom: todayStart, scheduledTo: todayEnd },
     { enabled: canViewBookings }
@@ -114,32 +107,22 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Welcome back, {user?.firstName}</h1>
-          <p className="text-sm text-muted-foreground">{formatDate(new Date())}</p>
-        </div>
-        {canCreateBooking && (
-          <Button render={<Link to="/app/bookings/new" />} variant="brand">
-            <Plus /> New booking
-          </Button>
-        )}
+      <div>
+        <h1 className="text-2xl font-semibold">Welcome back, {user?.firstName}</h1>
+        <p className="text-sm text-muted-foreground">{formatDate(new Date())}</p>
       </div>
 
       {canViewBookings && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <StatCard label="Today's bookings" value={todayBookings.data?.meta?.total ?? 0} icon={CalendarClock} isLoading={todayBookings.isLoading} />
-          <StatCard label="In progress" value={inProgress.data?.meta?.total ?? 0} icon={CircleDot} isLoading={inProgress.isLoading} />
-          <StatCard label="Awaiting payment" value={awaitingPayment.data?.meta?.total ?? 0} icon={Clock} isLoading={awaitingPayment.isLoading} />
           <StatCard label="Completed today" value={completedToday.data?.meta?.total ?? 0} icon={CheckCircle2} isLoading={completedToday.isLoading} />
         </div>
       )}
 
       {canManageBookings && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard label="Today's revenue" value={fmt(summary?.money?.todayRevenue)} icon={Banknote} isLoading={summaryLoading} />
-            <StatCard label="Outstanding balance" value={fmt(summary?.money?.outstandingBalance)} icon={HandCoins} isLoading={summaryLoading} />
             <StatCard
               label="New clients this week"
               value={summary?.growth?.newCustomers ?? 0}
@@ -158,35 +141,21 @@ export default function DashboardPage() {
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="gap-3 p-5">
-              <CardTitle className="text-sm">Upcoming bookings</CardTitle>
+              <CardTitle className="text-sm">Revenue trend (this week)</CardTitle>
               {summaryLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : summary?.upcoming?.length ? (
-                <div className="divide-y">
-                  {summary.upcoming.map((booking) => (
-                    <Link
-                      key={booking.bookingId}
-                      to={`/app/bookings/${booking.bookingId}`}
-                      className="flex items-center justify-between gap-3 py-2.5 text-sm hover:text-brand"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{booking.customerName}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {booking.branchName}
-                          {booking.providerNames.length > 0 && ` · ${booking.providerNames.join(', ')}`}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                        {formatDateTime(booking.scheduledAt)}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
+                <Skeleton className="h-48 w-full" />
               ) : (
-                <p className="py-4 text-center text-sm text-muted-foreground">No upcoming bookings.</p>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={summary?.revenueTrend ?? []} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                      <Tooltip formatter={(value) => fmt(value)} />
+                      <Bar dataKey="total" fill="var(--color-brand)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </Card>
 
