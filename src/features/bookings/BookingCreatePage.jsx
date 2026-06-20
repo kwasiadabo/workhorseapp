@@ -205,38 +205,38 @@ export default function BookingCreatePage() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="vehicleTypeId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Vehicle type</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select type">
-                        {(value) =>
-                          value === 'none' || !value
-                            ? 'Not specified'
-                            : (vehicleTypes.find((vt) => vt.id === value)?.name ?? 'Select type')
-                        }
-                      </SelectValue>
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="none">Not specified</SelectItem>
-                    {vehicleTypes.map((vt) => (
-                      <SelectItem key={vt.id} value={vt.id}>
-                        {vt.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <FormField
+          control={form.control}
+          name="vehicleTypeId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Vehicle type</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select type">
+                      {(value) =>
+                        value === 'none' || !value
+                          ? 'Not specified'
+                          : (vehicleTypes.find((vt) => vt.id === value)?.name ?? 'Select type')
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">Not specified</SelectItem>
+                  {vehicleTypes.map((vt) => (
+                    <SelectItem key={vt.id} value={vt.id}>
+                      {vt.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="grid gap-4 sm:grid-cols-3">
           <FormField
             control={form.control}
             name="vehicleRegistration"
@@ -326,6 +326,12 @@ export default function BookingCreatePage() {
 
         {fields.length > 0 && (
           <div className="space-y-2">
+            <div className="hidden items-center gap-3 px-3 text-xs font-medium text-muted-foreground sm:flex">
+              <p className="flex-1">Service</p>
+              <p className="w-20 text-center">Qty</p>
+              <p className="w-24 text-right">Amount</p>
+              <div className="size-7" />
+            </div>
             {fields.map((item, index) => {
               const service = serviceMap.get(item.serviceId);
               const quantity = Number(watchedServices[index]?.quantity || 0);
@@ -373,10 +379,12 @@ export default function BookingCreatePage() {
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => navigate('/app/bookings')} className="w-fit">
-        <ArrowLeft /> Back to bookings
-      </Button>
-      <PageHeader title="New booking" description="Schedule a new appointment for a client." />
+      <div className="space-y-1">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/app/bookings')} className="-ml-2 w-fit">
+          <ArrowLeft /> Back to bookings
+        </Button>
+        <PageHeader title="New booking" description="Schedule a new appointment for a client." />
+      </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -529,7 +537,7 @@ export default function BookingCreatePage() {
             <Button type="button" variant="outline" onClick={() => navigate('/app/bookings')}>
               Cancel
             </Button>
-            <Button type="submit" disabled={createBooking.isPending}>
+            <Button type="submit" variant="brand" disabled={createBooking.isPending}>
               {createBooking.isPending ? 'Creating...' : 'Create booking'}
             </Button>
           </div>
@@ -595,7 +603,7 @@ function AttendantAssignmentField({ employees, value, onChange, branchSelected }
         <DropdownMenuContent align="start" className="w-64">
           <div className="p-1">
             <Input
-              placeholder="Search service providers..."
+              placeholder="Search attendants..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.stopPropagation()}
@@ -608,7 +616,7 @@ function AttendantAssignmentField({ employees, value, onChange, branchSelected }
               <p className="px-1.5 py-1.5 text-sm text-muted-foreground">
                 {attendantEmployees.length === 0
                   ? `No active attendants/service providers${branchSelected ? ' in this branch' : ''}`
-                  : 'No service providers match your search'}
+                  : 'No attendants match your search'}
               </p>
             )}
             {filteredEmployees.map((employee) => (
