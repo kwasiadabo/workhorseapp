@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -6,6 +7,7 @@ import {
   CalendarCheck,
   CheckCircle2,
   Landmark,
+  Menu,
   Percent,
   Scissors,
   Sparkles,
@@ -18,6 +20,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import ThemeToggle from "@/components/shared/ThemeToggle";
 
 const CATEGORIES = [
   "Barbershops",
@@ -175,6 +179,8 @@ function Logo({ className = "h-7 w-auto" }) {
 }
 
 export default function LandingPage() {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
   return (
     <div className="flex min-h-svh flex-col">
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-sm">
@@ -205,16 +211,67 @@ export default function LandingPage() {
               How it works
             </a>
           </nav>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" render={<Link to="/login" />}>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <ThemeToggle className="hidden sm:inline-flex" />
+            <Button variant="ghost" className="hidden sm:inline-flex" render={<Link to="/login" />}>
               Sign in
             </Button>
             <Button render={<Link to="/register" />} variant="brand">
               Get started
             </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileNavOpen(true)}
+            >
+              <Menu className="size-4" />
+              <span className="sr-only">Open menu</span>
+            </Button>
           </div>
         </div>
       </header>
+
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetContent side="right" className="gap-0">
+          <SheetHeader className="flex-row items-center justify-between border-b">
+            <SheetTitle>Menu</SheetTitle>
+            <ThemeToggle />
+          </SheetHeader>
+          <nav className="flex flex-col gap-1 p-4 text-sm font-medium">
+            <a
+              href="#features"
+              onClick={() => setMobileNavOpen(false)}
+              className="rounded-md px-2 py-2.5 text-foreground transition-colors hover:bg-muted"
+            >
+              Features
+            </a>
+            <a
+              href="#reports"
+              onClick={() => setMobileNavOpen(false)}
+              className="rounded-md px-2 py-2.5 text-foreground transition-colors hover:bg-muted"
+            >
+              Reports
+            </a>
+            <a
+              href="#how-it-works"
+              onClick={() => setMobileNavOpen(false)}
+              className="rounded-md px-2 py-2.5 text-foreground transition-colors hover:bg-muted"
+            >
+              How it works
+            </a>
+          </nav>
+          <div className="mt-auto flex flex-col gap-2 border-t p-4">
+            <Button variant="outline" render={<Link to="/login" />} onClick={() => setMobileNavOpen(false)}>
+              Sign in
+            </Button>
+            <Button variant="brand" render={<Link to="/register" />} onClick={() => setMobileNavOpen(false)}>
+              Get started
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <main className="flex-1">
         {/* Hero */}

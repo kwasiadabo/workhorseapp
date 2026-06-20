@@ -20,6 +20,7 @@ import {
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import PageHeader from '@/components/shared/PageHeader';
 import StatCard from '@/components/shared/StatCard';
 import { formatDate } from '@/lib/dateFormat';
 import useAuthStore from '@/store/authStore';
@@ -107,10 +108,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Welcome back, {user?.firstName}</h1>
-        <p className="text-sm text-muted-foreground">{formatDate(new Date())}</p>
-      </div>
+      <PageHeader title={`Welcome back, ${user?.firstName}`} description={formatDate(new Date())} />
 
       {canViewBookings && (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -121,7 +119,7 @@ export default function DashboardPage() {
 
       {canManageBookings && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
             <StatCard label="Today's revenue" value={fmt(summary?.money?.todayRevenue)} icon={Banknote} isLoading={summaryLoading} />
             <StatCard
               label="New clients this week"
@@ -141,7 +139,10 @@ export default function DashboardPage() {
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="gap-3 p-5">
-              <CardTitle className="text-sm">Revenue trend (this week)</CardTitle>
+              <div>
+                <CardTitle className="text-sm">Revenue trend (this week)</CardTitle>
+                <CardDescription>Completed payments by day, Monday to Sunday.</CardDescription>
+              </div>
               {summaryLoading ? (
                 <Skeleton className="h-48 w-full" />
               ) : (
@@ -160,7 +161,10 @@ export default function DashboardPage() {
             </Card>
 
             <Card className="gap-3 p-5">
-              <CardTitle className="text-sm">Staff utilization today</CardTitle>
+              <div>
+                <CardTitle className="text-sm">Staff utilization today</CardTitle>
+                <CardDescription>Who's busy right now and how many services they've had today.</CardDescription>
+              </div>
               {summaryLoading ? (
                 <div className="space-y-2">
                   <Skeleton className="h-10 w-full" />

@@ -13,7 +13,9 @@ export default function StatCard({ label, value, icon: Icon, isLoading, sub, col
       {isLoading ? (
         <Skeleton className="h-8 w-12" />
       ) : (
-        <p className={`text-2xl font-semibold tabular-nums ${colorClass}`}>{value}</p>
+        <p className={`truncate text-2xl font-semibold tabular-nums ${colorClass}`} title={typeof value === 'string' ? value : undefined}>
+          {value}
+        </p>
       )}
       {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
     </Card>
