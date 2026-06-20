@@ -110,6 +110,16 @@ const getServicePrice = (service, vehicleTypeId) => {
   return Number(service?.price ?? 0);
 };
 
+// Car-wash services priced per vehicle type have no flat `price` (it's left
+// at its 0 default) — show a placeholder instead of a misleading "0.00"
+// until a vehicle (and therefore vehicle type) is selected.
+const formatServicePrice = (service, vehicleTypeId) => {
+  if (service?.vehiclePrices?.length && (!vehicleTypeId || vehicleTypeId === 'none')) {
+    return 'Select a vehicle for pricing';
+  }
+  return `${service?.currency} ${getServicePrice(service, vehicleTypeId).toFixed(2)}`;
+};
+
 export default function BookingCreatePage() {
   const navigate = useNavigate();
   const businessType = useAuthStore((s) => s.user?.businessType);
@@ -154,7 +164,10 @@ export default function BookingCreatePage() {
 
   const { data: vehiclesData } = useVehicles(
     { customerId: watchedCustomerId || undefined, limit: 100 },
-    { enabled: isCarWash && Boolean(watchedCustomerId) }
+    // Disable the generic hook's placeholderData carry-over — otherwise the
+    // dropdown briefly shows the previous customer's vehicles while the new
+    // customer's list is still loading.
+    { enabled: isCarWash && Boolean(watchedCustomerId), placeholderData: undefined }
   );
   const vehicles = vehiclesData?.data ?? [];
   const selectedVehicle = vehicles.find((v) => v.id === watchedVehicleId);
@@ -282,20 +295,16 @@ export default function BookingCreatePage() {
                 {(value) => {
                   const service = availableServices.find((s) => s.id === value);
                   if (!service) return 'Select a service to add';
-                  const price = getServicePrice(service, watchedVehicleTypeId);
-                  return `${service.name} — ${service.currency} ${price.toFixed(2)}`;
+                  return `${service.name} — ${formatServicePrice(service, watchedVehicleTypeId)}`;
                 }}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {availableServices.map((service) => {
-                const price = getServicePrice(service, watchedVehicleTypeId);
-                return (
-                  <SelectItem key={service.id} value={service.id}>
-                    {service.name} — {service.currency} {price.toFixed(2)}
-                  </SelectItem>
-                );
-              })}
+              {availableServices.map((service) => (
+                <SelectItem key={service.id} value={service.id}>
+                  {service.name} — {formatServicePrice(service, watchedVehicleTypeId)}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button type="button" variant="outline" onClick={handleAddService} disabled={!serviceToAdd}>
@@ -324,7 +333,7 @@ export default function BookingCreatePage() {
                   <div className="flex-1">
                     <p className="font-medium">{service?.name ?? 'Unknown service'}</p>
                     <p className="text-sm text-muted-foreground">
-                      {service?.currency} {unitPrice.toFixed(2)} · {service?.durationMinutes} min
+                      {formatServicePrice(service, watchedVehicleTypeId)} · {service?.durationMinutes} min
                     </p>
                   </div>
                   <FormField
