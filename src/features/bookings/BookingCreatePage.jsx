@@ -102,22 +102,28 @@ const formatVehicleLabel = (vehicle) => {
 const ATTENDANT_POSITIONS = ['attendant', 'attendants', 'service provider', 'service providers'];
 const isAttendantPosition = (position) => ATTENDANT_POSITIONS.includes(position?.trim().toLowerCase());
 
+// Returns null (rather than 0) when a vehicle-priced service has no price
+// resolvable yet — either no vehicle/vehicle type is selected, or the
+// service was never given a price for that specific vehicle type (e.g. a
+// vehicle type added after the service's prices were last configured).
+// That's distinct from a genuine price of 0 and must not be treated as free.
 const getServicePrice = (service, vehicleTypeId) => {
-  if (service?.vehiclePrices?.length && vehicleTypeId && vehicleTypeId !== 'none') {
+  if (service?.vehiclePrices?.length) {
+    if (!vehicleTypeId || vehicleTypeId === 'none') return null;
     const vp = service.vehiclePrices.find((p) => p.vehicleTypeId === vehicleTypeId);
-    if (vp !== undefined) return Number(vp.price);
+    return vp ? Number(vp.price) : null;
   }
   return Number(service?.price ?? 0);
 };
 
-// Car-wash services priced per vehicle type have no flat `price` (it's left
-// at its 0 default) — show a placeholder instead of a misleading "0.00"
-// until a vehicle (and therefore vehicle type) is selected.
 const formatServicePrice = (service, vehicleTypeId) => {
-  if (service?.vehiclePrices?.length && (!vehicleTypeId || vehicleTypeId === 'none')) {
-    return 'Select a vehicle for pricing';
+  const price = getServicePrice(service, vehicleTypeId);
+  if (price === null) {
+    return vehicleTypeId && vehicleTypeId !== 'none'
+      ? 'No price set for this vehicle type'
+      : 'Select a vehicle for pricing';
   }
-  return `${service?.currency} ${getServicePrice(service, vehicleTypeId).toFixed(2)}`;
+  return `${service?.currency} ${price.toFixed(2)}`;
 };
 
 export default function BookingCreatePage() {
@@ -178,7 +184,7 @@ export default function BookingCreatePage() {
   const total = watchedServices.reduce((sum, item) => {
     const service = serviceMap.get(item.serviceId);
     const qty = Number(item.quantity) || 0;
-    return sum + getServicePrice(service, watchedVehicleTypeId) * qty;
+    return sum + (getServicePrice(service, watchedVehicleTypeId) ?? 0) * qty;
   }, 0);
   const currency = services[0]?.currency ?? 'GH¢';
 
@@ -348,7 +354,7 @@ export default function BookingCreatePage() {
                     )}
                   />
                   <p className="w-24 text-right font-medium tabular-nums">
-                    {service?.currency} {(unitPrice * quantity).toFixed(2)}
+                    {unitPrice === null ? '—' : `${service?.currency} ${(unitPrice * quantity).toFixed(2)}`}
                   </p>
                   <Button type="button" variant="ghost" size="icon-sm" onClick={() => remove(index)}>
                     <Trash2 />
