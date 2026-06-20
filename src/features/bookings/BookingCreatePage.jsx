@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -43,6 +44,7 @@ import { useEmployees } from '@/features/employees/useEmployees';
 import { useServices } from '@/features/services/useServices';
 import { useCreateBooking, useAddAssignment } from './useBookings';
 import { useVehicleTypes } from './useVehicleTypes';
+import { useVehicles, useCreateVehicle } from './useVehicles';
 
 const bookingSchema = z.object({
   branchId: z.string().uuid('Select a branch'),
@@ -58,10 +60,14 @@ const bookingSchema = z.object({
     )
     .min(1, 'Add at least one service'),
   employeeIds: z.array(z.string().uuid()).min(1, 'Assign at least one service provider'),
+  vehicleId: z.string().uuid().optional().or(z.literal('')),
+});
+
+const vehicleFormSchema = z.object({
+  registration: z.string().min(1, 'Registration is required').max(50),
+  make: z.string().max(100).optional().or(z.literal('')),
+  model: z.string().max(100).optional().or(z.literal('')),
   vehicleTypeId: z.string().optional(),
-  vehicleRegistration: z.string().max(50).optional().or(z.literal('')),
-  vehicleMake: z.string().max(100).optional().or(z.literal('')),
-  vehicleModel: z.string().max(100).optional().or(z.literal('')),
 });
 
 const DEFAULT_VALUES = {
@@ -71,10 +77,7 @@ const DEFAULT_VALUES = {
   notes: '',
   services: [],
   employeeIds: [],
-  vehicleTypeId: 'none',
-  vehicleRegistration: '',
-  vehicleMake: '',
-  vehicleModel: '',
+  vehicleId: '',
 };
 
 const toDatetimeLocalNow = () => {
@@ -86,6 +89,11 @@ const formatCustomerLabel = (customer) => {
   if (!customer) return '';
   const name = customer.name;
   return customer.phone ? `${name} (${customer.phone})` : name;
+};
+
+const formatVehicleLabel = (vehicle) => {
+  if (!vehicle) return '';
+  return [vehicle.registration, vehicle.make, vehicle.model].filter(Boolean).join(' — ');
 };
 
 // Only employees holding an "attendant"/"service provider" position can be
@@ -110,6 +118,7 @@ export default function BookingCreatePage() {
   const [customerSearch, setCustomerSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
+  const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
   const [serviceToAdd, setServiceToAdd] = useState('');
   const debouncedCustomerSearch = useDebouncedValue(customerSearch);
 
@@ -137,12 +146,21 @@ export default function BookingCreatePage() {
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'services' });
   const watchedServices = useWatch({ control: form.control, name: 'services' }) ?? [];
   const watchedBranchId = useWatch({ control: form.control, name: 'branchId' });
-  const watchedVehicleTypeId = useWatch({ control: form.control, name: 'vehicleTypeId' });
+  const watchedCustomerId = useWatch({ control: form.control, name: 'customerId' });
+  const watchedVehicleId = useWatch({ control: form.control, name: 'vehicleId' });
 
   const { data: employeesData } = useEmployees({ branchId: watchedBranchId || undefined, status: 'active', limit: 100 });
   const employees = employeesData?.data ?? [];
 
-  const hasVehicleType = watchedVehicleTypeId && watchedVehicleTypeId !== 'none';
+  const { data: vehiclesData } = useVehicles(
+    { customerId: watchedCustomerId || undefined, limit: 100 },
+    { enabled: isCarWash && Boolean(watchedCustomerId) }
+  );
+  const vehicles = vehiclesData?.data ?? [];
+  const selectedVehicle = vehicles.find((v) => v.id === watchedVehicleId);
+  const watchedVehicleTypeId = selectedVehicle?.vehicleTypeId;
+
+  const hasVehicleType = Boolean(watchedVehicleTypeId);
 
   const total = watchedServices.reduce((sum, item) => {
     const service = serviceMap.get(item.serviceId);
@@ -167,10 +185,7 @@ export default function BookingCreatePage() {
         scheduledAt: new Date(values.scheduledAt).toISOString(),
         notes: values.notes || undefined,
         services: values.services.map((item) => ({ serviceId: item.serviceId, quantity: item.quantity })),
-        vehicleTypeId: values.vehicleTypeId && values.vehicleTypeId !== 'none' ? values.vehicleTypeId : undefined,
-        vehicleRegistration: values.vehicleRegistration || undefined,
-        vehicleMake: values.vehicleMake || undefined,
-        vehicleModel: values.vehicleModel || undefined,
+        vehicleId: values.vehicleId || undefined,
       },
       {
         onSuccess: async (booking) => {
@@ -199,84 +214,52 @@ export default function BookingCreatePage() {
       <CardHeader>
         <CardTitle>Vehicle</CardTitle>
         <CardDescription>
-          {isCarWash
-            ? 'Select the vehicle type first — it determines the price for each service.'
-            : 'Optional vehicle details for this booking.'}
+          {watchedCustomerId
+            ? "Pick this client's vehicle, or add a new one — it determines the price for each service."
+            : 'Select a client first to choose or add their vehicle.'}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent>
         <FormField
           control={form.control}
-          name="vehicleTypeId"
+          name="vehicleId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Vehicle type</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
+              <FormLabel>Vehicle</FormLabel>
+              <Select
+                value={field.value}
+                onValueChange={(value) => {
+                  if (value === '__new__') {
+                    setVehicleDialogOpen(true);
+                    return;
+                  }
+                  field.onChange(value);
+                }}
+                disabled={!watchedCustomerId}
+              >
                 <FormControl>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select type">
+                    <SelectValue>
                       {(value) =>
-                        value === 'none' || !value
-                          ? 'Not specified'
-                          : (vehicleTypes.find((vt) => vt.id === value)?.name ?? 'Select type')
+                        formatVehicleLabel(vehicles.find((v) => v.id === value)) ||
+                        (watchedCustomerId ? 'Select a vehicle' : 'Select a client first')
                       }
                     </SelectValue>
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="none">Not specified</SelectItem>
-                  {vehicleTypes.map((vt) => (
-                    <SelectItem key={vt.id} value={vt.id}>
-                      {vt.name}
+                  {vehicles.map((vehicle) => (
+                    <SelectItem key={vehicle.id} value={vehicle.id}>
+                      {formatVehicleLabel(vehicle)}
                     </SelectItem>
                   ))}
+                  <SelectItem value="__new__">+ Add a new vehicle</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
             </FormItem>
           )}
         />
-        <div className="grid gap-4 sm:grid-cols-3">
-          <FormField
-            control={form.control}
-            name="vehicleRegistration"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Registration number</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="vehicleMake"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Make</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="vehicleModel"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Model</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
       </CardContent>
     </Card>
   );
@@ -295,7 +278,7 @@ export default function BookingCreatePage() {
         <div className="flex gap-2">
           <Select value={serviceToAdd} onValueChange={setServiceToAdd}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a service to add">
+              <SelectValue>
                 {(value) => {
                   const service = availableServices.find((s) => s.id === value);
                   if (!service) return 'Select a service to add';
@@ -413,6 +396,7 @@ export default function BookingCreatePage() {
                             onValueChange={(customer) => {
                               setSelectedCustomer(customer);
                               field.onChange(customer?.id ?? '');
+                              form.setValue('vehicleId', '');
                             }}
                             onInputValueChange={(value, { reason }) => {
                               if (reason === 'item-press') return;
@@ -424,7 +408,7 @@ export default function BookingCreatePage() {
                           >
                             <ComboboxInputGroup className="flex-1">
                               <FormControl>
-                                <ComboboxInput placeholder="Search clients..." />
+                                <ComboboxInput />
                               </FormControl>
                               <ComboboxClear />
                               <ComboboxTrigger />
@@ -459,7 +443,7 @@ export default function BookingCreatePage() {
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a branch">
+                            <SelectValue>
                               {(value) => branches.find((branch) => branch.id === value)?.name ?? 'Select a branch'}
                             </SelectValue>
                           </SelectTrigger>
@@ -552,9 +536,147 @@ export default function BookingCreatePage() {
           setCustomerSearch('');
           setSelectedCustomer(customer);
           form.setValue('customerId', customer.id, { shouldValidate: true });
+          form.setValue('vehicleId', '');
         }}
       />
+
+      {isCarWash && (
+        <VehicleFormDialog
+          open={vehicleDialogOpen}
+          onOpenChange={setVehicleDialogOpen}
+          customerId={watchedCustomerId}
+          vehicleTypes={vehicleTypes}
+          onCreated={(vehicleId) => form.setValue('vehicleId', vehicleId, { shouldValidate: true })}
+        />
+      )}
     </div>
+  );
+}
+
+function VehicleFormDialog({ open, onOpenChange, customerId, vehicleTypes, onCreated }) {
+  const createVehicle = useCreateVehicle();
+
+  const form = useForm({
+    resolver: zodResolver(vehicleFormSchema),
+    defaultValues: { registration: '', make: '', model: '', vehicleTypeId: 'none' },
+  });
+
+  useEffect(() => {
+    if (open) form.reset({ registration: '', make: '', model: '', vehicleTypeId: 'none' });
+  }, [open, form]);
+
+  const onSubmit = (values) => {
+    createVehicle.mutate(
+      {
+        customerId,
+        registration: values.registration,
+        make: values.make || undefined,
+        model: values.model || undefined,
+        vehicleTypeId: values.vehicleTypeId !== 'none' ? values.vehicleTypeId : undefined,
+      },
+      {
+        onSuccess: (vehicle) => {
+          toast.success('Vehicle added');
+          onOpenChange(false);
+          onCreated(vehicle.id);
+        },
+        onError: (error) => toast.error(error?.response?.data?.message ?? 'Unable to add vehicle'),
+      }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add a vehicle</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="registration"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Registration number</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="make"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Make</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="model"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Model</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="vehicleTypeId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Vehicle type</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue>
+                          {(value) =>
+                            value === 'none' || !value
+                              ? 'Not specified'
+                              : (vehicleTypes.find((vt) => vt.id === value)?.name ?? 'Select type')
+                          }
+                        </SelectValue>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Not specified</SelectItem>
+                      {vehicleTypes.map((vt) => (
+                        <SelectItem key={vt.id} value={vt.id}>
+                          {vt.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="brand" disabled={createVehicle.isPending}>
+                {createVehicle.isPending ? 'Adding...' : 'Add vehicle'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -603,7 +725,6 @@ function AttendantAssignmentField({ employees, value, onChange, branchSelected }
         <DropdownMenuContent align="start" className="w-64">
           <div className="p-1">
             <Input
-              placeholder="Search attendants..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.stopPropagation()}
