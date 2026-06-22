@@ -33,6 +33,7 @@ import {
   Gift,
   Star,
   MessageSquare,
+  Compass,
 } from 'lucide-react';
 
 import useAuthStore from '@/store/authStore';
@@ -43,6 +44,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 
 const NAV_ITEMS = [
   { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/app/getting-started', label: 'Getting Started', icon: Compass },
 
   {
     type: 'group',

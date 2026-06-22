@@ -17,6 +17,7 @@ import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
 import ResetPasswordPage from '@/features/auth/ResetPasswordPage';
 import ChangePasswordPage from '@/features/auth/ChangePasswordPage';
 import DashboardPage from '@/features/dashboard/DashboardPage';
+import GettingStartedPage from '@/features/onboarding/GettingStartedPage';
 import BranchesPage from '@/features/branches/BranchesPage';
 import EmployeesPage from '@/features/employees/EmployeesPage';
 import UsersPage from '@/features/users/UsersPage';
@@ -85,6 +86,7 @@ export const router = createBrowserRouter([
         element: <TenantAppLayout />,
         children: [
           { index: true, element: <DashboardPage /> },
+          { path: 'getting-started', element: <GettingStartedPage /> },
           {
             element: <RoleRoute permissions={['branches.view']} />,
             children: [{ path: 'branches', element: <BranchesPage /> }],
