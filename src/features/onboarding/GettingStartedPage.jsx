@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  AlertTriangle,
   ArrowLeftRight,
   ArrowRight,
   Banknote,
   BarChart2,
   Building2,
   CalendarCheck,
+  CheckCircle2,
   CreditCard,
   Globe,
   Landmark,
@@ -14,15 +16,18 @@ import {
   Receipt,
   Scissors,
   Sparkles,
+  Tags,
   UserCog,
   Users,
   Wallet,
 } from 'lucide-react';
 
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import PageHeader from '@/components/shared/PageHeader';
 import useAuthStore from '@/store/authStore';
 import { markOnboardingSeen } from '@/lib/onboarding';
+import { useSetupStatus } from './useSetupStatus';
 
 const SECTIONS = [
   {
@@ -31,10 +36,11 @@ const SECTIONS = [
     description:
       "Before you can take a single booking, tell WorkHorse how your business is organized — where you operate, who works there, and what you sell.",
     steps: [
-      { label: 'Add your branches / locations', detail: 'Every booking, employee and report belongs to a branch.', to: '/app/branches', icon: Building2, permissions: ['branches.view'] },
-      { label: 'Add your staff', detail: 'Create employee profiles and assign each one a position.', to: '/app/employees', icon: Users, permissions: ['employees.view'] },
+      { label: 'Add your branches / locations', detail: 'Every booking, employee and report belongs to a branch.', to: '/app/branches', icon: Building2, permissions: ['branches.view'], statusKey: 'branches', required: true },
+      { label: 'Create service categories', detail: 'Group your services — e.g. "Hair", "Detailing" — before adding the services themselves.', to: '/app/services', icon: Tags, permissions: ['services.view'], statusKey: 'serviceCategories', required: true },
+      { label: 'Build your service catalog', detail: 'Define services with price & duration — these are snapshotted onto every booking.', to: '/app/services', icon: Scissors, permissions: ['services.view'], statusKey: 'services', required: true },
+      { label: 'Add your staff', detail: 'Create employee profiles and assign each one a position.', to: '/app/employees', icon: Users, permissions: ['employees.view'], statusKey: 'employees', required: true },
       { label: 'Create staff login accounts', detail: 'Give managers, receptionists and employees their own login with the right role.', to: '/app/users', icon: UserCog, permissions: ['users.view'] },
-      { label: 'Build your service catalog', detail: 'Define categories and services with price & duration — these are snapshotted onto every booking.', to: '/app/services', icon: Scissors, permissions: ['services.view'] },
       { label: 'Connect your bank accounts', detail: 'Optional — lets you reconcile card and mobile-money payments against bank statements.', to: '/app/banking/setup', icon: Landmark, permissions: ['banking.manage'] },
     ],
   },
@@ -89,10 +95,18 @@ const SECTIONS = [
   },
 ];
 
+const STATUS_LABELS = {
+  branches: 'branches',
+  serviceCategories: 'service categories',
+  services: 'services',
+  employees: 'staff',
+};
+
 export default function GettingStartedPage() {
   const user = useAuthStore((s) => s.user);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const hasRole = useAuthStore((s) => s.hasRole);
+  const { data: setupStatus } = useSetupStatus();
 
   useEffect(() => {
     markOnboardingSeen(user?.id);
@@ -107,12 +121,34 @@ export default function GettingStartedPage() {
     steps: section.steps.filter(isVisible),
   })).filter((section) => section.steps.length > 0);
 
+  const isOwner = hasRole('tenant_owner');
+  const setupIncomplete = isOwner && setupStatus && !setupStatus.complete;
+  const missingLabels = setupStatus
+    ? Object.entries(STATUS_LABELS)
+        .filter(([key]) => !setupStatus[key])
+        .map(([, label]) => label)
+    : [];
+
   return (
     <div className="space-y-8">
       <PageHeader
         title="Getting started"
         description={`Welcome${user?.firstName ? `, ${user.firstName}` : ''} — here's how WorkHorse fits together, from setup to your first report.`}
       />
+
+      {setupIncomplete && (
+        <Card className="gap-2 border-amber-500/30 bg-amber-50 p-5 dark:bg-amber-950/30">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400" />
+            <CardTitle className="text-sm">Finish setup to unlock the rest of WorkHorse</CardTitle>
+          </div>
+          <CardDescription className="text-foreground/80">
+            You can't take bookings yet — finish setting up{' '}
+            {missingLabels.join(', ')} below. Everywhere else in the app will
+            redirect back here until these are done.
+          </CardDescription>
+        </Card>
+      )}
 
       <Card className="gap-2 border-brand/20 bg-brand/5 p-5">
         <div className="flex items-center gap-2">
@@ -141,20 +177,29 @@ export default function GettingStartedPage() {
           </div>
 
           <div className="divide-y rounded-lg border">
-            {section.steps.map((step) => (
-              <Link
-                key={step.to}
-                to={step.to}
-                className="group flex items-center gap-3 p-3 transition-colors hover:bg-muted/50"
-              >
-                <step.icon className="size-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{step.label}</p>
-                  <p className="text-xs text-muted-foreground">{step.detail}</p>
-                </div>
-                <ArrowRight className="size-4 shrink-0 -translate-x-1 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
-              </Link>
-            ))}
+            {section.steps.map((step) => {
+              const done = step.statusKey && setupStatus ? setupStatus[step.statusKey] : null;
+              return (
+                <Link
+                  key={step.label}
+                  to={step.to}
+                  className="group flex items-center gap-3 p-3 transition-colors hover:bg-muted/50"
+                >
+                  <step.icon className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{step.label}</p>
+                    <p className="text-xs text-muted-foreground">{step.detail}</p>
+                  </div>
+                  {done === true && (
+                    <Badge variant="success" className="shrink-0 gap-1">
+                      <CheckCircle2 className="size-3" /> Done
+                    </Badge>
+                  )}
+                  {done === false && <Badge variant="warning" className="shrink-0">Required</Badge>}
+                  <ArrowRight className="size-4 shrink-0 -translate-x-1 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
+                </Link>
+              );
+            })}
           </div>
         </Card>
       ))}

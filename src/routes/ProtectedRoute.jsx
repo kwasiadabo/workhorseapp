@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
 import useAuthStore from '@/store/authStore';
 import { hasSeenOnboarding } from '@/lib/onboarding';
+import { useSetupStatus } from '@/features/onboarding/useSetupStatus';
 
 const BLOCKED_STATUSES = ['expired', 'suspended', 'cancelled'];
 const SUBSCRIPTION_PATHS = ['/app/subscription', '/app/subscription/callback'];
@@ -11,6 +12,7 @@ export default function ProtectedRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
   const location = useLocation();
+  const { data: setupStatus } = useSetupStatus();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -27,15 +29,25 @@ export default function ProtectedRoute() {
     return <Navigate to="/app/subscription" replace />;
   }
 
-  // First-time tenant users land on the getting-started guide before the rest of the app.
-  // Tracked client-side (per user id) so it only fires once and doesn't fight the
+  // Tenant owners with incomplete initial setup (no branches/categories/
+  // services/workers yet) are bounced to the getting-started checklist on
+  // every navigation, not just once — this is real backend-derived state,
+  // not a dismissible flag, so it keeps firing until setup is actually done.
+  // While the status query is still loading, don't redirect (avoids a
+  // flash/loop); it simply hasn't resolved as incomplete yet.
+  const setupIncomplete = user?.role === 'tenant_owner' && setupStatus && !setupStatus.complete;
+
+  // First-time tenant users (any role) land on the getting-started guide
+  // once. Tracked client-side (per user id) so it doesn't fight the
   // subscription-blocked redirect above.
+  const needsOnboarding = setupIncomplete || !hasSeenOnboarding(user?.id);
+
   if (
     user?.tenantId &&
     !isBlocked &&
     location.pathname.startsWith('/app') &&
     location.pathname !== ONBOARDING_PATH &&
-    !hasSeenOnboarding(user.id)
+    needsOnboarding
   ) {
     return <Navigate to={ONBOARDING_PATH} replace />;
   }

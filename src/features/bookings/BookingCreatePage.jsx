@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, Plus, Trash2, UserPlus, Users, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Plus, Trash2, UserPlus, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import PageHeader from '@/components/shared/PageHeader';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -45,6 +46,7 @@ import CustomerFormDialog from '@/features/customers/CustomerFormDialog';
 import { useEmployees } from '@/features/employees/useEmployees';
 import { useTeams } from '@/features/employees/useTeams';
 import TeamFormDialog from '@/features/employees/TeamFormDialog';
+import { useSetupStatus } from '@/features/onboarding/useSetupStatus';
 import { useServices } from '@/features/services/useServices';
 import { useCreateBooking, useAddAssignment } from './useBookings';
 import { useVehicleTypes } from './useVehicleTypes';
@@ -124,10 +126,18 @@ const formatServicePrice = (service, vehicleTypeId) => {
   return `${service?.currency} ${price.toFixed(2)}`;
 };
 
+const SETUP_REQUIREMENTS = [
+  { key: 'branches', label: 'Branches', to: '/app/branches', permission: 'branches.manage' },
+  { key: 'services', label: 'Services', to: '/app/services', permission: 'services.manage' },
+  { key: 'employees', label: 'Workers', to: '/app/employees', permission: 'employees.manage' },
+];
+
 export default function BookingCreatePage() {
   const navigate = useNavigate();
   const businessType = useAuthStore((s) => s.user?.businessType);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
   const isCarWash = isCarBusiness(businessType);
+  const { data: setupStatus, isLoading: setupStatusLoading } = useSetupStatus();
 
   const [customerSearch, setCustomerSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -384,6 +394,47 @@ export default function BookingCreatePage() {
       </CardContent>
     </Card>
   );
+
+  const missingSetup = setupStatus ? SETUP_REQUIREMENTS.filter((req) => !setupStatus[req.key]) : [];
+  if (!setupStatusLoading && missingSetup.length > 0) {
+    const canFixAny = missingSetup.some((req) => hasPermission(req.permission));
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/app/bookings')} className="-ml-2 w-fit">
+            <ArrowLeft /> Back to bookings
+          </Button>
+          <PageHeader title="New booking" description="Schedule a new appointment for a client." />
+        </div>
+        <Card className="gap-3 border-amber-500/30 bg-amber-50 p-5 dark:bg-amber-950/30">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400" />
+            <CardTitle className="text-sm">Business setup isn't finished yet</CardTitle>
+          </div>
+          <CardDescription className="text-foreground/80">
+            {canFixAny
+              ? "You can't create a booking until these are set up:"
+              : "You can't create a booking yet — ask your business owner or manager to finish setting up the business first:"}
+          </CardDescription>
+          {canFixAny && (
+            <div className="flex flex-wrap gap-2">
+              {missingSetup.map((req) =>
+                hasPermission(req.permission) ? (
+                  <Button key={req.key} variant="outline" size="sm" render={<Link to={req.to} />}>
+                    Set up {req.label}
+                  </Button>
+                ) : (
+                  <Badge key={req.key} variant="outline">
+                    {req.label}
+                  </Badge>
+                )
+              )}
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
