@@ -20,6 +20,7 @@ import DashboardPage from '@/features/dashboard/DashboardPage';
 import GettingStartedPage from '@/features/onboarding/GettingStartedPage';
 import BranchesPage from '@/features/branches/BranchesPage';
 import EmployeesPage from '@/features/employees/EmployeesPage';
+import TeamsPage from '@/features/employees/TeamsPage';
 import UsersPage from '@/features/users/UsersPage';
 import UserDetailPage from '@/features/users/UserDetailPage';
 import CustomersPage from '@/features/customers/CustomersPage';
@@ -93,7 +94,10 @@ export const router = createBrowserRouter([
           },
           {
             element: <RoleRoute permissions={['employees.view']} />,
-            children: [{ path: 'employees', element: <EmployeesPage /> }],
+            children: [
+              { path: 'employees', element: <EmployeesPage /> },
+              { path: 'teams', element: <TeamsPage /> },
+            ],
           },
           {
             element: <RoleRoute permissions={['users.view']} />,

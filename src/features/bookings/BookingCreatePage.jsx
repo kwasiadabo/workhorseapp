@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, Plus, Trash2, UserPlus, X } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, UserPlus, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import PageHeader from '@/components/shared/PageHeader';
@@ -31,16 +31,19 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import useDebouncedValue from '@/hooks/useDebouncedValue';
 import useAuthStore from '@/store/authStore';
 import { isCarBusiness } from '@/lib/businessTypes';
+import { isAttendantPosition } from '@/lib/employees';
 import { useBranches } from '@/features/branches/useBranches';
 import { useCustomers } from '@/features/customers/useCustomers';
 import CustomerFormDialog from '@/features/customers/CustomerFormDialog';
 import { useEmployees } from '@/features/employees/useEmployees';
+import { useTeams } from '@/features/employees/useTeams';
 import { useServices } from '@/features/services/useServices';
 import { useCreateBooking, useAddAssignment } from './useBookings';
 import { useVehicleTypes } from './useVehicleTypes';
@@ -95,12 +98,6 @@ const formatVehicleLabel = (vehicle) => {
   if (!vehicle) return '';
   return [vehicle.registration, vehicle.make, vehicle.model].filter(Boolean).join(' — ');
 };
-
-// Only employees holding an "attendant"/"service provider" position can be
-// assigned to provide booking services — other positions (e.g. manager,
-// receptionist) shouldn't show up in the picker.
-const ATTENDANT_POSITIONS = ['attendant', 'attendants', 'service provider', 'service providers'];
-const isAttendantPosition = (position) => ATTENDANT_POSITIONS.includes(position?.trim().toLowerCase());
 
 // Returns null (rather than 0) when a vehicle-priced service has no price
 // resolvable yet — either no vehicle/vehicle type is selected, or the
@@ -167,6 +164,9 @@ export default function BookingCreatePage() {
 
   const { data: employeesData } = useEmployees({ branchId: watchedBranchId || undefined, status: 'active', limit: 100 });
   const employees = employeesData?.data ?? [];
+
+  const { data: teamsData } = useTeams({ branchId: watchedBranchId || undefined, isActive: true, limit: 100 });
+  const teams = teamsData?.data ?? [];
 
   const { data: vehiclesData } = useVehicles(
     { customerId: watchedCustomerId || undefined, limit: 100 },
@@ -521,6 +521,7 @@ export default function BookingCreatePage() {
                   <FormItem className="space-y-2">
                     <AttendantAssignmentField
                       employees={employees}
+                      teams={teams}
                       value={field.value}
                       onChange={field.onChange}
                       branchSelected={Boolean(watchedBranchId)}
@@ -695,7 +696,7 @@ function VehicleFormDialog({ open, onOpenChange, customerId, vehicleTypes, onCre
   );
 }
 
-function AttendantAssignmentField({ employees, value, onChange, branchSelected }) {
+function AttendantAssignmentField({ employees, teams = [], value, onChange, branchSelected }) {
   const [search, setSearch] = useState('');
   const selectedIds = value ?? [];
 
@@ -709,6 +710,13 @@ function AttendantAssignmentField({ employees, value, onChange, branchSelected }
   const selectedEmployees = selectedIds.map((id) => attendantEmployees.find((e) => e.id === id)).filter(Boolean);
 
   const removeEmployee = (id) => onChange(selectedIds.filter((existingId) => existingId !== id));
+
+  // A team is just a shortcut for picking each of its members — merge them into
+  // the same `employeeIds` array the individual picker writes to.
+  const assignTeam = (team) => {
+    const teamMemberIds = (team.members ?? []).map((member) => member.id);
+    onChange([...new Set([...selectedIds, ...teamMemberIds])]);
+  };
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -772,6 +780,24 @@ function AttendantAssignmentField({ employees, value, onChange, branchSelected }
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
+      {teams.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button type="button" variant="outline" size="sm" className="gap-1.5" />}>
+            <Users className="size-4" />
+            Assign team
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Teams at this branch</DropdownMenuLabel>
+              {teams.map((team) => (
+                <DropdownMenuItem key={team.id} onClick={() => assignTeam(team)}>
+                  {team.name} ({team.members?.length ?? 0})
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }

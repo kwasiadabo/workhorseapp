@@ -34,6 +34,7 @@ import {
   Star,
   MessageSquare,
   Compass,
+  UsersRound,
 } from 'lucide-react';
 
 import useAuthStore from '@/store/authStore';
@@ -96,6 +97,7 @@ const NAV_ITEMS = [
     children: [
       { to: '/app/branches', label: 'Branches', icon: Building2, permissions: ['branches.view'] },
       { to: '/app/employees', label: 'Workers', icon: Users, permissions: ['employees.view'] },
+      { to: '/app/teams', label: 'Teams', icon: UsersRound, permissions: ['employees.view'] },
       { to: '/app/users', label: 'Users', icon: UserCog, permissions: ['users.view'] },
       { to: '/app/services', label: 'Services', icon: Scissors, permissions: ['services.view'] },
       { to: '/app/banking/setup', label: 'Banks & Accounts', icon: Landmark, permissions: ['banking.manage'] },
