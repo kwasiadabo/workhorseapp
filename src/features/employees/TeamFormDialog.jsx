@@ -44,7 +44,7 @@ const teamSchema = z.object({
 
 const DEFAULT_VALUES = { branchId: '', name: '', description: '', isActive: true, memberIds: [] };
 
-export default function TeamFormDialog({ open, onOpenChange, team }) {
+export default function TeamFormDialog({ open, onOpenChange, team, defaultBranchId, onSaved }) {
   const isEditing = Boolean(team);
   const { data: branchesData } = useBranches({ limit: 100 });
   const branches = branchesData?.data ?? [];
@@ -63,14 +63,14 @@ export default function TeamFormDialog({ open, onOpenChange, team }) {
           isActive: team.isActive ?? true,
           memberIds: team.members?.map((member) => member.id) ?? [],
         }
-      : DEFAULT_VALUES,
+      : { ...DEFAULT_VALUES, branchId: defaultBranchId ?? '' },
   });
 
   useEffect(() => {
     if (open && !isEditing) {
-      form.reset(DEFAULT_VALUES);
+      form.reset({ ...DEFAULT_VALUES, branchId: defaultBranchId ?? '' });
     }
-  }, [open, isEditing, form]);
+  }, [open, isEditing, defaultBranchId, form]);
 
   const branchId = useWatch({ control: form.control, name: 'branchId' });
   const { data: employeesData } = useEmployees(
@@ -85,9 +85,10 @@ export default function TeamFormDialog({ open, onOpenChange, team }) {
     const args = isEditing ? { id: team.id, data: payload } : payload;
 
     mutation.mutate(args, {
-      onSuccess: () => {
+      onSuccess: (saved) => {
         toast.success(isEditing ? 'Team updated' : 'Team created');
         onOpenChange(false);
+        onSaved?.(saved);
       },
       onError: (error) => toast.error(error?.response?.data?.message ?? 'Unable to save team'),
     });

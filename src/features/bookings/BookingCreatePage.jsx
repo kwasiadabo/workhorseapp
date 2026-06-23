@@ -44,6 +44,7 @@ import { useCustomers } from '@/features/customers/useCustomers';
 import CustomerFormDialog from '@/features/customers/CustomerFormDialog';
 import { useEmployees } from '@/features/employees/useEmployees';
 import { useTeams } from '@/features/employees/useTeams';
+import TeamFormDialog from '@/features/employees/TeamFormDialog';
 import { useServices } from '@/features/services/useServices';
 import { useCreateBooking, useAddAssignment } from './useBookings';
 import { useVehicleTypes } from './useVehicleTypes';
@@ -132,6 +133,7 @@ export default function BookingCreatePage() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
+  const [teamDialogOpen, setTeamDialogOpen] = useState(false);
   const [serviceToAdd, setServiceToAdd] = useState('');
   const debouncedCustomerSearch = useDebouncedValue(customerSearch);
 
@@ -513,7 +515,19 @@ export default function BookingCreatePage() {
               <CardTitle>Attendants</CardTitle>
               <CardDescription>Assign the attendants who will provide these services.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setTeamDialogOpen(true)}
+                  disabled={!watchedBranchId}
+                >
+                  <Plus className="size-4" /> New team
+                </Button>
+              </div>
               <FormField
                 control={form.control}
                 name="employeeIds"
@@ -553,6 +567,18 @@ export default function BookingCreatePage() {
           setSelectedCustomer(customer);
           form.setValue('customerId', customer.id, { shouldValidate: true });
           form.setValue('vehicleId', '');
+        }}
+      />
+
+      <TeamFormDialog
+        open={teamDialogOpen}
+        onOpenChange={setTeamDialogOpen}
+        team={null}
+        defaultBranchId={watchedBranchId}
+        onSaved={(team) => {
+          const teamMemberIds = (team.members ?? []).map((member) => member.id);
+          const current = form.getValues('employeeIds') ?? [];
+          form.setValue('employeeIds', [...new Set([...current, ...teamMemberIds])], { shouldValidate: true });
         }}
       />
 
