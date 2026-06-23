@@ -86,6 +86,7 @@ const NAV_ITEMS = [
       { to: '/app/revenue-report', label: 'Revenue Report', icon: TrendingUp, permissions: ['reports.view'] },
       { to: '/app/commission-report', label: 'Commission Report', icon: Percent, permissions: ['employees.manage'] },
       { to: '/app/service-provider-report', label: 'Service Provider Report', icon: UserSearch, permissions: ['reports.view'] },
+      { to: '/app/team-performance-report', label: 'Team Performance Report', icon: UsersRound, permissions: ['reports.view'] },
       { to: '/app/analytics', label: 'Business Analytics', icon: ChartNoAxesCombined, roles: ['tenant_owner'] },
     ],
   },

@@ -54,3 +54,10 @@ export const useServiceProviderAssignments = (params, options = {}) =>
     placeholderData: (prev) => prev,
     ...options,
   });
+
+export const useTeamPerformanceReport = (params) =>
+  useQuery({
+    queryKey: ['reports', 'team-performance', params],
+    queryFn: () => reportsApi.getTeamPerformanceReport(params),
+    placeholderData: (prev) => prev,
+  });

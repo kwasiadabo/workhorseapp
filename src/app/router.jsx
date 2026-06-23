@@ -42,6 +42,7 @@ import PaymentsReportPage from '@/features/payments/PaymentsReportPage';
 import RevenueReportPage from '@/features/reports/RevenueReportPage';
 import CommissionReportPage from '@/features/reports/CommissionReportPage';
 import ServiceProviderReportPage from '@/features/reports/ServiceProviderReportPage';
+import TeamPerformanceReportPage from '@/features/reports/TeamPerformanceReportPage';
 import SubscriptionPage from '@/features/subscription/SubscriptionPage';
 import SubscriptionCallbackPage from '@/features/subscription/SubscriptionCallbackPage';
 import PortalSettingsPage from '@/features/portal/PortalSettingsPage';
@@ -190,7 +191,10 @@ export const router = createBrowserRouter([
           },
           {
             element: <RoleRoute permissions={['reports.view']} />,
-            children: [{ path: 'service-provider-report', element: <ServiceProviderReportPage /> }],
+            children: [
+              { path: 'service-provider-report', element: <ServiceProviderReportPage /> },
+              { path: 'team-performance-report', element: <TeamPerformanceReportPage /> },
+            ],
           },
           {
             element: <RoleRoute permissions={['customers.view']} />,

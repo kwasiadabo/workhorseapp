@@ -9,4 +9,5 @@ export const reportsApi = {
   getCommissionReport: (params) => api.get('/commission', { params }).then((res) => res.data.data),
   getServiceProviderPerformance: (params) => api.get('/service-provider-report', { params }).then((res) => res.data.data),
   getServiceProviderAssignments: (params) => api.get('/service-provider-report/assignments', { params }).then((res) => res.data.data),
+  getTeamPerformanceReport: (params) => api.get('/team-performance-report', { params }).then((res) => res.data.data),
 };

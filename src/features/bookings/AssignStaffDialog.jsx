@@ -84,7 +84,7 @@ export default function AssignStaffDialog({ open, onOpenChange, bookingId, branc
 
       Promise.all(
         assignableIds.map((employeeId) =>
-          addAssignment.mutateAsync({ bookingId, data: { employeeId, bookingServiceId } })
+          addAssignment.mutateAsync({ bookingId, data: { employeeId, bookingServiceId, teamId: team.id } })
         )
       )
         .then(() => {

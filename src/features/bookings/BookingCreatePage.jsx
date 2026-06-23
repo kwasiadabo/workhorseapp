@@ -135,6 +135,11 @@ export default function BookingCreatePage() {
   const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
   const [serviceToAdd, setServiceToAdd] = useState('');
+  // Maps a selected employeeId -> the team it was assigned via (if any), so
+  // each individual assignment created on submit can be tagged with the
+  // right team for reporting. Manually touching an assignment (via the
+  // individual picker or removing a pill) always clears its tag.
+  const [employeeTeamTags, setEmployeeTeamTags] = useState({});
   const debouncedCustomerSearch = useDebouncedValue(customerSearch);
 
   const { data: branchesData } = useBranches({ limit: 100 });
@@ -214,7 +219,10 @@ export default function BookingCreatePage() {
             try {
               await Promise.all(
                 values.employeeIds.map((employeeId) =>
-                  addAssignment.mutateAsync({ bookingId: booking.id, data: { employeeId } })
+                  addAssignment.mutateAsync({
+                    bookingId: booking.id,
+                    data: { employeeId, teamId: employeeTeamTags[employeeId] },
+                  })
                 )
               );
             } catch {
@@ -538,6 +546,7 @@ export default function BookingCreatePage() {
                       teams={teams}
                       value={field.value}
                       onChange={field.onChange}
+                      onTeamTagsChange={setEmployeeTeamTags}
                       branchSelected={Boolean(watchedBranchId)}
                     />
                     <FormMessage />
@@ -579,6 +588,13 @@ export default function BookingCreatePage() {
           const teamMemberIds = (team.members ?? []).map((member) => member.id);
           const current = form.getValues('employeeIds') ?? [];
           form.setValue('employeeIds', [...new Set([...current, ...teamMemberIds])], { shouldValidate: true });
+          setEmployeeTeamTags((prev) => {
+            const next = { ...prev };
+            teamMemberIds.forEach((id) => {
+              next[id] = team.id;
+            });
+            return next;
+          });
         }}
       />
 
@@ -722,7 +738,7 @@ function VehicleFormDialog({ open, onOpenChange, customerId, vehicleTypes, onCre
   );
 }
 
-function AttendantAssignmentField({ employees, teams = [], value, onChange, branchSelected }) {
+function AttendantAssignmentField({ employees, teams = [], value, onChange, onTeamTagsChange, branchSelected }) {
   const [search, setSearch] = useState('');
   const selectedIds = value ?? [];
 
@@ -735,13 +751,35 @@ function AttendantAssignmentField({ employees, teams = [], value, onChange, bran
 
   const selectedEmployees = selectedIds.map((id) => attendantEmployees.find((e) => e.id === id)).filter(Boolean);
 
-  const removeEmployee = (id) => onChange(selectedIds.filter((existingId) => existingId !== id));
+  // Touching an assignment by hand always clears any team tag it had — once
+  // a human picks or removes someone individually, it's no longer "the team".
+  const clearTag = (id) =>
+    onTeamTagsChange?.((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+
+  const removeEmployee = (id) => {
+    onChange(selectedIds.filter((existingId) => existingId !== id));
+    clearTag(id);
+  };
 
   // A team is just a shortcut for picking each of its members — merge them into
-  // the same `employeeIds` array the individual picker writes to.
+  // the same `employeeIds` array the individual picker writes to, tagging each
+  // newly-added member with this team so the resulting assignments can be
+  // attributed to it in reports.
   const assignTeam = (team) => {
     const teamMemberIds = (team.members ?? []).map((member) => member.id);
     onChange([...new Set([...selectedIds, ...teamMemberIds])]);
+    onTeamTagsChange?.((prev) => {
+      const next = { ...prev };
+      teamMemberIds.forEach((id) => {
+        next[id] = team.id;
+      });
+      return next;
+    });
   };
 
   return (
@@ -793,11 +831,12 @@ function AttendantAssignmentField({ employees, teams = [], value, onChange, bran
               <DropdownMenuCheckboxItem
                 key={employee.id}
                 checked={selectedIds.includes(employee.id)}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked) => {
                   onChange(
                     checked ? [...selectedIds, employee.id] : selectedIds.filter((id) => id !== employee.id)
-                  )
-                }
+                  );
+                  clearTag(employee.id);
+                }}
               >
                 {employee.firstName} {employee.lastName}
                 {employee.position ? ` — ${employee.position}` : ''}
