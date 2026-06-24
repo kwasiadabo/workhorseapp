@@ -5,7 +5,6 @@ import {
   startOfYear,
   subDays,
   subMonths,
-  startOfDay,
   differenceInDays,
 } from 'date-fns';
 import {
@@ -25,7 +24,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Calculator, Hash, TrendingUp, Wallet } from 'lucide-react';
+import { Calculator, Hash, Wallet } from 'lucide-react';
 
 import PageHeader from '@/components/shared/PageHeader';
 import DataTable from '@/components/shared/DataTable';
@@ -148,7 +147,7 @@ export default function RevenueReportPage() {
 
   const { data, isLoading } = useRevenueReport(params);
 
-  const timeSeries = data?.timeSeries ?? [];
+  const timeSeries = useMemo(() => data?.timeSeries ?? [], [data]);
   const byBranch = data?.byBranch ?? [];
   const byMethod = data?.byMethod ?? [];
 

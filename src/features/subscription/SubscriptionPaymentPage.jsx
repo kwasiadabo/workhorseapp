@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { addDays, format } from 'date-fns';
 import { ArrowLeft, Lock, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,12 +14,18 @@ export default function SubscriptionPaymentPage({ plan, billingCycle, trialStart
   const price = billingCycle === 'yearly' ? plan.priceYearly : plan.priceMonthly;
   const perLabel = billingCycle === 'yearly' ? 'year' : 'month';
 
-  const daysUsed = trialStartedAt
-    ? Math.ceil((Date.now() - new Date(trialStartedAt).getTime()) / 86_400_000)
-    : 0;
-  const daysUnused = Math.max(0, 30 - daysUsed);
-  const cycleDays = billingCycle === 'yearly' ? 365 : 30;
-  const firstPeriodEnd = addDays(new Date(), cycleDays + daysUnused);
+  // `Date.now()` is impure, so it's captured once via a lazy useState
+  // initializer (runs only at mount) rather than called directly during
+  // render — the displayed estimate then stays stable across re-renders,
+  // and the actual billing period is calculated server-side at payment time.
+  const [now] = useState(() => Date.now());
+
+  const { daysUnused, firstPeriodEnd } = useMemo(() => {
+    const daysUsed = trialStartedAt ? Math.ceil((now - new Date(trialStartedAt).getTime()) / 86_400_000) : 0;
+    const unused = Math.max(0, 30 - daysUsed);
+    const cycleDays = billingCycle === 'yearly' ? 365 : 30;
+    return { daysUnused: unused, firstPeriodEnd: addDays(new Date(now), cycleDays + unused) };
+  }, [now, trialStartedAt, billingCycle]);
 
   const handlePay = async () => {
     setIsPending(true);

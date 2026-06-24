@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { format, startOfMonth, subDays } from 'date-fns';
-import { Plus, ArrowDownToLine, ArrowUpFromLine, Pencil, Trash2 } from 'lucide-react';
+import { format, startOfMonth } from 'date-fns';
+import { ArrowDownToLine, ArrowUpFromLine, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import PageHeader from '@/components/shared/PageHeader';
@@ -10,7 +10,6 @@ import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import FormattedDateInput from '@/components/shared/FormattedDateInput';
 import { Card } from '@/components/ui/card';
 import useAuthStore from '@/store/authStore';

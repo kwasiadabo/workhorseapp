@@ -18,7 +18,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import FormattedDateInput from '@/components/shared/FormattedDateInput';
 import { useBankAccounts } from './useBankAccounts';
@@ -288,6 +287,17 @@ function DepositsWithdrawalsTab({ data, isLoading, isError, period }) {
 }
 
 function ReconciliationTab({ data, isLoading, isError, period }) {
+  // Hooks must run unconditionally on every render, before the early returns
+  // below — derive from `data?.reconciliation` directly rather than from the
+  // `accounts` variable declared later.
+  const accountsWithRunning = useMemo(() => {
+    const list = data?.reconciliation ?? [];
+    return list.map((acc, index) => ({
+      ...acc,
+      runningBalance: list.slice(0, index + 1).reduce((sum, a) => sum + a.currentBalance, 0),
+    }));
+  }, [data]);
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -304,12 +314,6 @@ function ReconciliationTab({ data, isLoading, isError, period }) {
   }
 
   const accounts = data.reconciliation ?? [];
-
-  let running = 0;
-  const accountsWithRunning = accounts.map((acc) => {
-    running += acc.currentBalance;
-    return { ...acc, runningBalance: running };
-  });
 
   if (accounts.length === 0) {
     return (

@@ -76,7 +76,7 @@ export default function CommissionReportPage() {
   const branches = branchesData?.data ?? [];
 
   const summary = data?.summary ?? {};
-  const employees = data?.employees ?? [];
+  const employees = useMemo(() => data?.employees ?? [], [data]);
 
   const chartData = useMemo(
     () =>

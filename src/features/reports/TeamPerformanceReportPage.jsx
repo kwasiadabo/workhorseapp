@@ -63,7 +63,7 @@ export default function TeamPerformanceReportPage() {
   const branches = branchesData?.data ?? [];
 
   const summary = data?.summary ?? {};
-  const teams = data?.teams ?? [];
+  const teams = useMemo(() => data?.teams ?? [], [data]);
 
   const chartData = useMemo(
     () =>
