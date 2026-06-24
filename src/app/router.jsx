@@ -46,6 +46,7 @@ import TeamPerformanceReportPage from '@/features/reports/TeamPerformanceReportP
 import SubscriptionPage from '@/features/subscription/SubscriptionPage';
 import SubscriptionCallbackPage from '@/features/subscription/SubscriptionCallbackPage';
 import PortalSettingsPage from '@/features/portal/PortalSettingsPage';
+import SuperAdminDashboardPage from '@/features/superAdmin/SuperAdminDashboardPage';
 import SuperAdminTenantsPage from '@/features/superAdmin/SuperAdminTenantsPage';
 import SuperAdminTenantDetailPage from '@/features/superAdmin/SuperAdminTenantDetailPage';
 import SuperAdminUsersPage from '@/features/superAdmin/SuperAdminUsersPage';
@@ -229,6 +230,7 @@ export const router = createBrowserRouter([
           {
             element: <SuperAdminLayout />,
             children: [
+              { path: 'dashboard', element: <SuperAdminDashboardPage /> },
               { path: 'tenants', element: <SuperAdminTenantsPage /> },
               { path: 'tenants/:id', element: <SuperAdminTenantDetailPage /> },
               { path: 'users', element: <SuperAdminUsersPage /> },

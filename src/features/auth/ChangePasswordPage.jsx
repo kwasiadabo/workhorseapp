@@ -43,7 +43,7 @@ export default function ChangePasswordPage() {
       {
         onSuccess: (data) => {
           toast.success('Your password has been changed.');
-          const fallback = data.user?.role === 'super_admin' ? '/admin/tenants' : '/app';
+          const fallback = data.user?.role === 'super_admin' ? '/admin/dashboard' : '/app';
           navigate(fallback, { replace: true });
         },
         onError: (error) => {

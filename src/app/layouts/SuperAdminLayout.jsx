@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Building, Menu, Users, Layers } from 'lucide-react';
+import { Building, Menu, Users, Layers, LayoutDashboard } from 'lucide-react';
 
 import SidebarNav from '@/components/layout/SidebarNav';
 import UserMenu from '@/components/layout/UserMenu';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 const NAV_ITEMS = [
+  { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/tenants', label: 'Tenants', icon: Building },
   { to: '/admin/users', label: 'Users', icon: Users },
   { to: '/admin/business-types', label: 'Business Types', icon: Layers },

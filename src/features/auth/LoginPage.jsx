@@ -28,7 +28,7 @@ export default function LoginPage() {
   const onSubmit = (values) => {
     login.mutate(values, {
       onSuccess: (data) => {
-        const fallback = data.user?.role === 'super_admin' ? '/admin/tenants' : '/app';
+        const fallback = data.user?.role === 'super_admin' ? '/admin/dashboard' : '/app';
         navigate(location.state?.from?.pathname ?? fallback, { replace: true });
       },
       onError: (error) => {

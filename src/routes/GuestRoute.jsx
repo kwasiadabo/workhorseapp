@@ -7,7 +7,7 @@ export default function GuestRoute() {
   const user = useAuthStore((s) => s.user);
 
   if (isAuthenticated) {
-    const redirectTo = user?.role === 'super_admin' ? '/admin/tenants' : '/app';
+    const redirectTo = user?.role === 'super_admin' ? '/admin/dashboard' : '/app';
     return <Navigate to={redirectTo} replace />;
   }
 
